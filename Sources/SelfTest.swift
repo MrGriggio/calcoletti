@@ -99,7 +99,7 @@ enum SelfTest {
 
         report.append("")
         report.append("## Schermate")
-        let hasGPU = MTLCreateSystemDefaultDevice() != nil
+        let hasGPU = MTLCreateSystemDefaultDevice() != nil && !CommandLine.arguments.contains("--cpu")
         report.append("- disegno: " + (hasGPU ? "GPU (ImageRenderer)" : "senza GPU (AppKit)"))
         func shot(_ name: String, night: Bool) {
             model.themeMode = night ? .dark : .light
@@ -159,13 +159,30 @@ enum SelfTest {
         var manifest: [String] = []
         var n = 0
 
+        let cpu = CommandLine.arguments.contains("--cpu")
         func render(_ name: String) {
-            let r = ImageRenderer(content: RootView().environmentObject(model))
-            r.scale = 3
-            if let cg = r.cgImage,
-               let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) {
-                try? png.write(to: out.appendingPathComponent(name))
+            var png: Data?
+            if cpu {
+                let night = model.isNight(at: Date())
+                let host = NSHostingView(rootView: RootView().environmentObject(model))
+                let frame = NSRect(x: 0, y: 0, width: 312, height: 620)
+                host.frame = frame
+                let win = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
+                win.appearance = NSAppearance(named: night ? .darkAqua : .aqua)
+                win.contentView = host
+                host.layoutSubtreeIfNeeded()
+                RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+                if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                    host.cacheDisplay(in: host.bounds, to: rep)
+                    png = rep.representation(using: .png, properties: [:])
+                }
+                win.contentView = nil
+            } else {
+                let r = ImageRenderer(content: RootView().environmentObject(model))
+                r.scale = 3
+                if let cg = r.cgImage { png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) }
             }
+            if let png = png { try? png.write(to: out.appendingPathComponent(name)) }
         }
         func frame(_ label: String) {
             let name = String(format: "k%03d.png", n)

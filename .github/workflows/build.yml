@@ -52,32 +52,43 @@ jobs:
             --target "$GITHUB_SHA"
 
   schermate:
-    # Apple Silicon: ha la GPU virtuale necessaria per disegnare le schermate. Non blocca la release.
-    runs-on: macos-14
+    # Disegna le schermate e i fotogrammi per i video. Non blocca la release.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-26
+            mode: gpu
+          - os: macos-15-intel
+            mode: cpu
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
-      - name: Compila (solo arm64) e scatta le schermate
+      - name: Compila e scatta schermate e fotogrammi
         shell: bash
         run: |
           mkdir -p shot
-          xcrun swiftc -O -swift-version 5 -parse-as-library -target arm64-apple-macos13.0 Sources/*.swift -o shot/Calcoletti
-          shot/Calcoletti --selftest "$PWD/selftest" 2>&1 | tail -40
+          ARCH=$(uname -m)
+          xcrun swiftc -O -swift-version 5 -parse-as-library -target ${ARCH}-apple-macos13.0 Sources/*.swift -o shot/Calcoletti
+          FLAG=""; [ "${{ matrix.mode }}" = cpu ] && FLAG="--cpu"
+          shot/Calcoletti --selftest $FLAG "$PWD/selftest" 2>&1 | tail -40 || echo "selftest: crash"
           for L in it en; do
             D="$PWD/selftest/demo"; [ $L = en ] && D="$PWD/selftest/demo-en"
-            shot/Calcoletti --demo --lang $L "$D" 2>&1 | tail -3 || echo "demo $L: crash"
-            shot/Calcoletti --demo --stills --lang $L "$D" 2>&1 | tail -5 || echo "stills $L: crash"
+            shot/Calcoletti --demo $FLAG --lang $L "$D" 2>&1 | tail -3 || echo "demo $L: crash"
+            shot/Calcoletti --demo --stills $FLAG --lang $L "$D" 2>&1 | tail -5 || echo "stills $L: crash"
           done
-      - name: Salva le schermate nel ramo selftest
+          ls -R selftest | head -20
+      - name: Salva nel ramo selftest-${{ matrix.mode }}
         if: always()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           [ -n "$(ls -A selftest 2>/dev/null)" ] || exit 0
-          cat selftest/report.md >> "$GITHUB_STEP_SUMMARY"
+          cat selftest/report.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
           cd selftest
           git init -q && git checkout -q -b selftest && git add .
-          git -c user.name="Calcoletti CI" -c user.email="ci@users.noreply.github.com" commit -qm "Collaudo di $GITHUB_SHA"
-          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" selftest
+          git -c user.name="Calcoletti CI" -c user.email="ci@users.noreply.github.com" commit -qm "Collaudo di $GITHUB_SHA (${{ matrix.mode }})"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" selftest:selftest-${{ matrix.mode }}
