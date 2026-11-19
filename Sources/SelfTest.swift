@@ -182,22 +182,30 @@ enum SelfTest {
                 _ = model.handle(e)
             }
         }
-        frame("start")
+        let stills = CommandLine.arguments.contains("--stills")
+        if !stills { frame("start") }
         let scenes = CalcEngine.english ? ["12.50+7.25+3-s100+t", "1000+22%+t", "100d112⏎"]
                                         : ["12,50+7,25+3-s100+t", "1000+22%+t", "100d112⏎"]
         for scene in scenes {
             manifest.append("# scena")
-            for ch in scene { press(ch); frame(String(ch)) }
+            for ch in scene {
+                press(ch)
+                if stills { manifest.append("x\t\(ch)") } else { frame(String(ch)) }
+            }
         }
-        model.flashKey = nil
-        render("giorno.png")
-        model.themeMode = .dark
-        render("sera.png")
-        model.showHistory = true
-        if let last = model.engine.history.last { model.expandedReceipts.insert(last.id) }
-        render("cronologia-sera.png")
-        model.themeMode = .light
-        render("cronologia-giorno.png")
+        if stills {
+            model.flashKey = nil
+            print("stills: giorno"); render("giorno.png")
+            model.themeMode = .dark
+            print("stills: sera"); render("sera.png")
+            model.showHistory = true
+            if let last = model.engine.history.last { model.expandedReceipts.insert(last.id) }
+            print("stills: cronologia"); render("cronologia-sera.png")
+            model.themeMode = .light
+            render("cronologia-giorno.png")
+            print("stills: fatto")
+            exit(0)
+        }
         try? manifest.joined(separator: "\n").write(to: out.appendingPathComponent("manifest.txt"), atomically: true, encoding: .utf8)
         exit(0)
     }
