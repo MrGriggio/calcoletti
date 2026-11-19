@@ -19,11 +19,18 @@ jobs:
           set -o pipefail
           swift --version 2>&1 | tee build.log
           bash build.sh 2>&1 | tee -a build.log
+      - name: Collaudo automatico
+        shell: bash
+        run: |
+          set -o pipefail
+          build/Calcoletti.app/Contents/MacOS/Calcoletti --selftest "$PWD/selftest" 2>&1 | tee selftest.log
       - name: Riepilogo
         if: always()
         shell: bash
         run: |
           {
+            cat selftest/report.md 2>/dev/null || { echo '## Collaudo non eseguito'; echo '```'; tail -30 selftest.log 2>/dev/null; echo '```'; }
+            echo
             echo '## Log di compilazione'
             echo '```'
             grep -E "error:|warning: .*deprecated|✓|→" build.log | grep -v "warning:" | head -80 || true
@@ -31,6 +38,17 @@ jobs:
             tail -40 build.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Salva le schermate del collaudo (ramo selftest)
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -d selftest ] || exit 0
+          cd selftest
+          git init -q && git checkout -q -b selftest && git add .
+          git -c user.name="Calcoletti CI" -c user.email="ci@users.noreply.github.com" commit -qm "Collaudo di $GITHUB_SHA"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" selftest
       - name: Pubblica Calcoletti.dmg nella pagina Releases
         if: success() && github.ref == 'refs/heads/main'
         shell: bash

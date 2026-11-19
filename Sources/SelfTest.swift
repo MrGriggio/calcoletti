@@ -1,0 +1,116 @@
+import SwiftUI
+import AppKit
+
+/// Collaudo automatico: `Calcoletti --selftest <cartella>`
+/// Simula la tastiera fisica, controlla i risultati, salva le schermate e scrive report.md.
+@MainActor
+enum SelfTest {
+    static func run() -> Never {
+        let args = CommandLine.arguments
+        let out = URL(fileURLWithPath: args.last.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? FileManager.default.currentDirectoryPath)
+        try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        _ = NSApplication.shared
+        CalcModel.isSnapshot = true
+
+        var report: [String] = ["# Collaudo Calcoletti", ""]
+        var failures = 0
+        func check(_ ok: Bool, _ what: String) {
+            report.append((ok ? "- ✅ " : "- ❌ ") + what)
+            if !ok { failures += 1 }
+        }
+
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("calcoletti-\(UUID().uuidString)")
+        let model = CalcModel(storageDir: tmp, testing: true)
+        model.decimals = 2
+
+        // Tastiera fisica simulata (stessi eventi che manda la tastiera del Mac)
+        func key(_ chars: String, code: UInt16 = 0, mods: NSEvent.ModifierFlags = []) -> Bool {
+            guard let e = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: mods,
+                                           timestamp: 0, windowNumber: 0, context: nil,
+                                           characters: chars, charactersIgnoringModifiers: chars,
+                                           isARepeat: false, keyCode: code) else { return false }
+            return model.handle(e)
+        }
+        func type(_ s: String) {
+            for ch in s {
+                switch ch {
+                case "⏎": _ = key("\r", code: 36)
+                case "⎋": _ = key("\u{1b}", code: 53)
+                case "⌫": _ = key("\u{7f}", code: 51)
+                default: _ = key(String(ch))
+                }
+            }
+        }
+        func dec(_ s: String) -> Decimal { Decimal(string: s, locale: Locale(identifier: "en_US_POSIX"))! }
+
+        report.append("## Calcoli con la tastiera del Mac")
+        type("12,5+7,25+3-s100+t")
+        check(model.engine.history.last?.total == dec("116.75"), "12,50 + 7,25 + 3 − ◇ + 100 + T → 116,75")
+        type("1000+22%+⏎")
+        check(model.engine.history.last?.total == 1220, "1000 + 22 % + Invio → 1.220 (IVA)")
+        type("100d112⏎")
+        check(model.engine.display == 12, "100 D 112 Invio → +12,00 % (Δ%)")
+        check(model.displayText == "12,00", "display mostra 12,00 (letto: \(model.displayText))")
+        type("t")
+        type("80d60=")
+        check(model.engine.display == -25, "80 Δ 60 = → −25 %")
+        type("t")
+        type("12*3⏎")
+        check(model.engine.display == 36, "12 * 3 Invio → 36")
+        type("t")
+        type("1234⌫⌫")
+        check(model.engine.entry == "12", "⌫ cancella le cifre (resta 12)")
+        type("⎋")
+        check(model.engine.entry.isEmpty, "Esc cancella il numero")
+        type("10/0⏎")
+        check(model.engine.tape.last?.kind == .error, "10 / 0 → E (errore)")
+        type("⎋")
+        type("g")
+        check(model.engine.display == model.engine.gt, "G richiama il gran totale")
+        let handledCmdQ = key("x", mods: [.command])
+        check(handledCmdQ == false, "⌘X non viene intercettato (resta al sistema)")
+        type("h")
+        check(model.showHistory, "H apre la cronologia")
+        type("⎋")
+        check(!model.showHistory, "Esc chiude la cronologia")
+
+        // Salvataggio su disco
+        model.saveNow()
+        let saved = (try? Data(contentsOf: tmp.appendingPathComponent("scontrino.json"))).flatMap {
+            try? JSONDecoder().decode(CalcEngine.self, from: $0)
+        }
+        check(saved?.history.count == model.engine.history.count, "cronologia salvata su disco (\(saved?.history.count ?? 0) conti)")
+
+        // Uno scontrino in corso per le schermate
+        type("45,90+12,10+8,50-")
+
+        report.append("")
+        report.append("## Schermate")
+        func shot(_ name: String, night: Bool) {
+            model.themeMode = night ? .dark : .light
+            let view = RootView().environmentObject(model)
+            let r = ImageRenderer(content: view)
+            r.scale = 2
+            var ok = false
+            if let cg = r.cgImage {
+                let rep = NSBitmapImageRep(cgImage: cg)
+                if let png = rep.representation(using: .png, properties: [:]) {
+                    ok = (try? png.write(to: out.appendingPathComponent(name))) != nil
+                }
+            }
+            check(ok, "schermata \(name)")
+        }
+        shot("1-giorno.png", night: false)
+        shot("2-sera.png", night: true)
+        model.showHistory = true
+        if let first = model.engine.history.last { model.expandedReceipts.insert(first.id) }
+        shot("3-cronologia-giorno.png", night: false)
+        shot("4-cronologia-sera.png", night: true)
+
+        report.append("")
+        report.append(failures == 0 ? "**Tutti i controlli superati.**" : "**\(failures) controlli FALLITI.**")
+        try? report.joined(separator: "\n").write(to: out.appendingPathComponent("report.md"), atomically: true, encoding: .utf8)
+        print(report.joined(separator: "\n"))
+        exit(failures == 0 ? 0 : 1)
+    }
+}

@@ -7,7 +7,12 @@ import ServiceManagement
 
 @main
 struct CalcolettiApp: App {
-    @StateObject private var model = CalcModel()
+    @StateObject private var model: CalcModel
+
+    init() {
+        if CommandLine.arguments.contains("--selftest") { SelfTest.run() }   // collaudo automatico, poi esce
+        _model = StateObject(wrappedValue: CalcModel())
+    }
 
     var body: some Scene {
         MenuBarExtra {
@@ -150,9 +155,12 @@ final class CalcModel: ObservableObject {
     private var clockTimer: Timer?
     private let fileURL: URL
 
-    init() {
+    /// true durante il collaudo automatico: niente ScrollView/Menu (non disegnabili fuori schermo)
+    static var isSnapshot = false
+
+    init(storageDir: URL? = nil, testing: Bool = false) {
         let d = UserDefaults.standard
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dir = storageDir ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Calcoletti", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appendingPathComponent("scontrino.json")
@@ -171,7 +179,7 @@ final class CalcModel: ObservableObject {
         nightHour = d.object(forKey: "nightHour") as? Int ?? 19
         dayHour = d.object(forKey: "dayHour") as? Int ?? 7
 
-        installKeyMonitor()
+        if !testing { installKeyMonitor() }
         let t = Timer(timeInterval: 30, repeats: true) { [weak self] _ in self?.now = Date() }
         RunLoop.main.add(t, forMode: .common)
         clockTimer = t
@@ -181,7 +189,7 @@ final class CalcModel: ObservableObject {
         }
 
         // Al primo avvio si registra tra gli elementi di login, così l'icona c'è sempre.
-        if !d.bool(forKey: "loginConfigured") {
+        if !testing && !d.bool(forKey: "loginConfigured") {
             d.set(true, forKey: "loginConfigured")
             try? SMAppService.mainApp.register()
         }
@@ -498,6 +506,14 @@ struct SettingsMenu: View {
     let p: Palette
 
     var body: some View {
+        if CalcModel.isSnapshot {
+            Image(systemName: "gearshape").font(.system(size: 13)).foregroundStyle(p.ink)
+        } else {
+            menu
+        }
+    }
+
+    private var menu: some View {
         Menu {
             Picker("Decimali", selection: $model.decimals) {
                 Text("F – virgola mobile").tag(-1)
@@ -553,6 +569,28 @@ struct TapeView: View {
     let p: Palette
 
     var body: some View {
+        if CalcModel.isSnapshot {
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                VStack(spacing: 3) {
+                    ForEach(Array(model.engine.tape.suffix(13))) { line in
+                        TapeRow(line: line, decimals: model.engine.decimals, p: p)
+                    }
+                }
+                Color.clear.frame(height: 6)
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .background(ZStack(alignment: .top) { p.paper; ZigZag().fill(p.bg).frame(height: 5) })
+            .padding(.horizontal, 14)
+            .clipped()
+        } else {
+            scrolling
+        }
+    }
+
+    private var scrolling: some View {
         GeometryReader { geo in
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
@@ -848,7 +886,18 @@ struct HistoryView: View {
                     .padding(.top, 8)
                 Spacer()
             } else {
-                ScrollView(.vertical, showsIndicators: true) {
+                if CalcModel.isSnapshot {
+                    VStack(spacing: 0) { list; Spacer(minLength: 0) }.clipped()
+                } else {
+                    ScrollView(.vertical, showsIndicators: true) { list }
+                }
+                footer
+            }
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    private var list: some View {
                     LazyVStack(alignment: .leading, spacing: 8, pinnedViews: [.sectionHeaders]) {
                         ForEach(model.historyGroups) { g in
                             Section(header: sectionHeader(g.title)) {
@@ -862,7 +911,9 @@ struct HistoryView: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.bottom, 10)
-                }
+    }
+
+    private var footer: some View {
                 HStack {
                     Text("\(model.engine.history.count) conti salvati")
                         .font(.system(size: 11))
@@ -889,9 +940,6 @@ struct HistoryView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-            }
-        }
-        .frame(maxHeight: .infinity)
     }
 
     private func sectionHeader(_ title: String) -> some View {
