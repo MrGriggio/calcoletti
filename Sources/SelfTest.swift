@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Metal
 
 /// Collaudo automatico: `Calcoletti --selftest <cartella>`
 /// Simula la tastiera fisica, controlla i risultati, salva le schermate e scrive report.md.
@@ -84,20 +85,46 @@ enum SelfTest {
         // Uno scontrino in corso per le schermate
         type("45,90+12,10+8,50-")
 
+        // report scritto subito, così i risultati arrivano anche se le schermate falliscono
+        func writeReport() {
+            var r = report
+            r.append("")
+            r.append(failures == 0 ? "**Tutti i controlli superati.**" : "**\(failures) controlli FALLITI.**")
+            try? r.joined(separator: "\n").write(to: out.appendingPathComponent("report.md"), atomically: true, encoding: .utf8)
+        }
+        writeReport()
+
         report.append("")
         report.append("## Schermate")
+        let hasGPU = MTLCreateSystemDefaultDevice() != nil
+        report.append("- disegno: " + (hasGPU ? "GPU (ImageRenderer)" : "senza GPU (AppKit)"))
         func shot(_ name: String, night: Bool) {
             model.themeMode = night ? .dark : .light
-            let view = RootView().environmentObject(model)
-            let r = ImageRenderer(content: view)
-            r.scale = 2
-            var ok = false
-            if let cg = r.cgImage {
-                let rep = NSBitmapImageRep(cgImage: cg)
-                if let png = rep.representation(using: .png, properties: [:]) {
-                    ok = (try? png.write(to: out.appendingPathComponent(name))) != nil
+            var png: Data?
+            if hasGPU {
+                let r = ImageRenderer(content: RootView().environmentObject(model))
+                r.scale = 2
+                if let cg = r.cgImage {
+                    png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])
                 }
+            } else {
+                let host = NSHostingView(rootView: RootView().environmentObject(model))
+                let frame = NSRect(x: 0, y: 0, width: 312, height: 620)
+                host.frame = frame
+                let win = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
+                win.appearance = NSAppearance(named: night ? .darkAqua : .aqua)
+                win.contentView = host
+                host.layoutSubtreeIfNeeded()
+                RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+                host.layoutSubtreeIfNeeded()
+                if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                    host.cacheDisplay(in: host.bounds, to: rep)
+                    png = rep.representation(using: .png, properties: [:])
+                }
+                win.contentView = nil
             }
+            var ok = false
+            if let png = png { ok = (try? png.write(to: out.appendingPathComponent(name))) != nil }
             check(ok, "schermata \(name)")
         }
         shot("1-giorno.png", night: false)

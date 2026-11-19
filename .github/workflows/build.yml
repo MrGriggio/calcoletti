@@ -44,7 +44,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          [ -d selftest ] || exit 0
+          [ -n "$(ls -A selftest 2>/dev/null)" ] || exit 0
           cd selftest
           git init -q && git checkout -q -b selftest && git add .
           git -c user.name="Calcoletti CI" -c user.email="ci@users.noreply.github.com" commit -qm "Collaudo di $GITHUB_SHA"
