@@ -102,6 +102,7 @@ enum SelfTest {
         report.append("- disegno: " + (hasGPU ? "GPU (ImageRenderer)" : "senza GPU (AppKit)"))
         func shot(_ name: String, night: Bool) {
             model.themeMode = night ? .dark : .light
+            model.flashKey = nil
             var png: Data?
             if hasGPU {
                 let r = ImageRenderer(content: RootView().environmentObject(model))

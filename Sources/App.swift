@@ -458,15 +458,10 @@ struct HeaderView: View {
                 Text(model.showHistory ? "Cronologia" : "Calcoletti")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(p.ink)
+                    .lineLimit(1)
+                    .fixedSize()
             }
             Spacer()
-            if model.engine.gt != 0 && !model.showHistory {
-                Text("GT " + CalcEngine.format(model.engine.gt, decimals: model.engine.decimals))
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .lineLimit(1)
-                    .foregroundStyle(p.inkSoft)
-                    .help("Gran totale accumulato (premi GT due volte per azzerarlo)")
-            }
             HeaderButton(symbol: model.showHistory ? "xmark" : "clock.arrow.circlepath",
                          help: model.showHistory ? "Torna alla calcolatrice (Esc)" : "Cronologia dei conti (H)",
                          p: p) { model.showHistory.toggle() }
@@ -581,10 +576,10 @@ struct TapeView: View {
             }
             .padding(.horizontal, 14)
             .padding(.top, 10)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .bottom)
+            .clipped()
             .background(ZStack(alignment: .top) { p.paper; ZigZag().fill(p.bg).frame(height: 5) })
             .padding(.horizontal, 14)
-            .clipped()
         } else {
             scrolling
         }
@@ -741,6 +736,10 @@ struct DisplayView: View {
                     Text("n. \(e.count)")
                 }
                 Spacer()
+                if e.gt != 0 {
+                    Text("GT " + CalcEngine.format(e.gt, decimals: e.decimals))
+                        .help("Gran totale accumulato (premi GT due volte per azzerarlo)")
+                }
                 Text(verbatim: e.decimals < 0 ? "F" : "\(e.decimals) dec")
             }
             .font(.system(size: 10, weight: .medium, design: .monospaced))

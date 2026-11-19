@@ -436,7 +436,7 @@ struct CalcEngine: Codable {
     }
 
     static func formatLine(_ line: TapeLine, decimals: Int) -> String {
-        guard let v = line.value else { return line.kind == .error ? "E" : "" }
+        guard let v = line.value else { return "" }
         return format(v, decimals: self.decimals(for: line, base: decimals), signed: isSigned(line))
     }
 
