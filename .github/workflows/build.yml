@@ -1,5 +1,4 @@
-# Se il progetto viene messo su GitHub, ogni modifica crea in automatico Calcoletti.dmg
-# (scaricabile dalla scheda "Actions"), senza bisogno di compilare sul proprio Mac.
+# Ogni modifica crea in automatico Calcoletti.dmg (scaricabile dalla scheda "Actions").
 name: Build Calcoletti
 on:
   push:
@@ -8,10 +7,27 @@ jobs:
   build:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Compila app e dmg
-        run: bash build.sh
+        shell: bash
+        run: |
+          set -o pipefail
+          swift --version 2>&1 | tee build.log
+          bash build.sh 2>&1 | tee -a build.log
+      - name: Riepilogo
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Log di compilazione'
+            echo '```'
+            grep -E "error:|warning: .*deprecated|✓|→" build.log | grep -v "warning:" | head -80 || true
+            echo '---- coda ----'
+            tail -40 build.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: Calcoletti
           path: build/Calcoletti.dmg
