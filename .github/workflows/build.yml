@@ -6,6 +6,8 @@ on:
 concurrency:
   group: build
   cancel-in-progress: true
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: macos-15-intel
@@ -29,8 +31,15 @@ jobs:
             tail -40 build.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
-        if: success()
-        with:
-          name: Calcoletti
-          path: build/Calcoletti.dmg
+      - name: Pubblica Calcoletti.dmg nella pagina Releases
+        if: success() && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Info.plist)
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest build/Calcoletti.dmg \
+            --title "Calcoletti ${VERSION}" \
+            --notes "Scarica Calcoletti.dmg, aprilo e trascina Calcoletti in Applicazioni. Al primo avvio: Impostazioni di Sistema → Privacy e sicurezza → Apri comunque." \
+            --target "$GITHUB_SHA"
