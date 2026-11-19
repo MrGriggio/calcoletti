@@ -10,7 +10,7 @@ DEST="/Applications"
 [ -w "$DEST" ] || DEST="$HOME/Applications"
 mkdir -p "$DEST"
 
-echo "→ Installo in $DEST…"
+echo "→ Installo in ${DEST}…"
 pkill -x Calcoletti 2>/dev/null || true
 pkill -x Scontrino 2>/dev/null || true
 sleep 0.5

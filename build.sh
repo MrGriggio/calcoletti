@@ -18,7 +18,7 @@ rm -rf build
 mkdir -p "build/$APP/Contents/MacOS" "build/$APP/Contents/Resources"
 
 # Compila per Apple Silicon e Intel e unisce i due in un'unica app (funziona su ogni Mac).
-echo "→ Compilo $NAME $VERSION…"
+echo "→ Compilo ${NAME} ${VERSION}…"
 for ARCH in arm64 x86_64; do
     xcrun swiftc -O -swift-version 5 -parse-as-library \
         -target "${ARCH}-apple-macos13.0" \
