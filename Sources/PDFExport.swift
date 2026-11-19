@@ -92,7 +92,10 @@ enum PDFExport {
         df.dateFormat = CalcEngine.english ? "EEEE, MMMM d, yyyy · HH:mm" : "EEEE d MMMM yyyy · HH:mm"
 
         for r in sorted {
-            ensure(30 + lineH * 3)
+            // un conto che sta in una pagina non viene spezzato
+            let visible = r.lines.filter { $0.kind != .cut }
+            let needed = 22 + lineH * CGFloat(visible.count) + CGFloat(visible.filter { $0.kind == .total }.count) * 4 + 28
+            ensure(min(needed, page.height - 2 * margin - 40))
             // titolo del conto: data e totale
             var head = df.string(from: r.date)
             head = head.prefix(1).uppercased() + head.dropFirst()
