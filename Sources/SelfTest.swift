@@ -7,7 +7,8 @@ import Metal
 @MainActor
 enum SelfTest {
     static func run() -> Never {
-        let args = CommandLine.arguments.filter { !$0.hasPrefix("--") }
+        if !CommandLine.arguments.contains("--lang") { CalcEngine.english = false }   // i controlli sono in formato italiano
+        let args = CommandLine.arguments.filter { !$0.hasPrefix("--") && $0 != "en" && $0 != "it" }
         let out = URL(fileURLWithPath: args.count > 1 ? args.last! : FileManager.default.currentDirectoryPath)
         try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
         _ = NSApplication.shared
@@ -146,7 +147,7 @@ enum SelfTest {
 
     /// Fotogrammi per il video: `Calcoletti --demo <cartella>` salva una schermata dopo ogni tasto.
     static func demo() -> Never {
-        let args = CommandLine.arguments.filter { !$0.hasPrefix("--") }
+        let args = CommandLine.arguments.filter { !$0.hasPrefix("--") && $0 != "en" && $0 != "it" }
         let out = URL(fileURLWithPath: args.count > 1 ? args.last! : FileManager.default.currentDirectoryPath)
         try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
         _ = NSApplication.shared
@@ -182,7 +183,9 @@ enum SelfTest {
             }
         }
         frame("start")
-        for scene in ["12,50+7,25+3-s100+t", "1000+22%+t", "100d112⏎"] {
+        let scenes = CalcEngine.english ? ["12.50+7.25+3-s100+t", "1000+22%+t", "100d112⏎"]
+                                        : ["12,50+7,25+3-s100+t", "1000+22%+t", "100d112⏎"]
+        for scene in scenes {
             manifest.append("# scena")
             for ch in scene { press(ch); frame(String(ch)) }
         }

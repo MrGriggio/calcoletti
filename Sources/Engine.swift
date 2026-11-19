@@ -1,5 +1,8 @@
 import Foundation
 
+/// Testo nella lingua dell'app: italiano se il Mac è in italiano, altrimenti inglese.
+func L(_ it: String, _ en: String) -> String { CalcEngine.english ? en : it }
+
 // MARK: - Modello dati dello scontrino
 
 enum LineKind: String, Codable {
@@ -54,6 +57,10 @@ struct CalcEngine: Codable {
     var displayIsResult = false     // il display contiene un risultato riutilizzabile con + / −
     var lastWasGT = false
     var decimals: Int = 2           // -1 = virgola mobile (F)
+
+    static var english: Bool = !(Locale.preferredLanguages.first ?? "it").hasPrefix("it")
+    static var decimalSep: String { english ? "." : "," }
+    static var groupSep: String { english ? "," : "." }
 
     static let maxTapeLines = 1500
     static let maxHistory = 2000
@@ -152,7 +159,7 @@ struct CalcEngine: Codable {
         // C: annulla il conto in corso
         let hadWork = pendingOp != nil || count > 0 || receiptInProgress
         if hadWork {
-            append(TapeLine(value: nil, symbol: "C", label: "annullato", kind: .note))
+            append(TapeLine(value: nil, symbol: "C", label: L("annullato", "void"), kind: .note))
             archive(total: nil)
         }
         acc = 0; count = 0; pendingOp = nil; pendingValue = 0
@@ -190,7 +197,7 @@ struct CalcEngine: Codable {
     private mutating func subtotal() {
         if pendingOp != nil || entryValue != nil { addOrSubtract(positive: true) }
         guard count > 0 else { return }
-        append(TapeLine(value: acc, symbol: "◇", label: "n. \(count)", kind: .subtotal))
+        append(TapeLine(value: acc, symbol: "◇", label: L("n. ", "no. ") + "\(count)", kind: .subtotal))
         display = acc
         displayIsResult = false
     }
@@ -203,7 +210,7 @@ struct CalcEngine: Codable {
         }
         if count > 0 {
             let t = acc
-            append(TapeLine(value: t, symbol: "*", label: "n. \(count)", kind: .total))
+            append(TapeLine(value: t, symbol: "*", label: L("n. ", "no. ") + "\(count)", kind: .total))
             gt += t
             acc = 0; count = 0
             display = t
@@ -219,12 +226,12 @@ struct CalcEngine: Codable {
         let standalone = !receiptInProgress && pendingOp == nil && count == 0
         if second {
             gt = 0
-            append(TapeLine(value: 0, symbol: "GT", label: "azzerato", kind: .note))
+            append(TapeLine(value: 0, symbol: "GT", label: L("azzerato", "cleared"), kind: .note))
             lastWasGT = false
             display = 0
             displayIsResult = false
         } else {
-            append(TapeLine(value: gt, symbol: "GT", label: "gran totale", kind: .grandTotal))
+            append(TapeLine(value: gt, symbol: "GT", label: L("gran totale", "grand total"), kind: .grandTotal))
             display = gt
             displayIsResult = true
             lastWasGT = true
@@ -240,7 +247,7 @@ struct CalcEngine: Codable {
             if entryValue == nil {
                 // cambio di operazione: sostituisce il simbolo dell'ultima riga
                 pendingOp = op
-                if let i = tape.indices.last { tape[i].symbol = CalcEngine.symbol(op); tape[i].label = op == .delta ? "da" : "" }
+                if let i = tape.indices.last { tape[i].symbol = CalcEngine.symbol(op); tape[i].label = op == .delta ? L("da", "from") : "" }
                 return
             }
             guard let r = equals() else { return }
@@ -252,7 +259,7 @@ struct CalcEngine: Codable {
         }
         pendingOp = op
         pendingValue = first
-        append(TapeLine(value: first, symbol: CalcEngine.symbol(op), label: op == .delta ? "da" : "", kind: .entry))
+        append(TapeLine(value: first, symbol: CalcEngine.symbol(op), label: op == .delta ? L("da", "from") : "", kind: .entry))
         display = first
         displayIsResult = false
     }
@@ -272,12 +279,12 @@ struct CalcEngine: Codable {
             guard b != 0 else { return fail() }
             return finish(round(a / b), symbol: "=")
         case .delta:
-            append(TapeLine(value: b, symbol: "", label: "a", kind: .entry))
+            append(TapeLine(value: b, symbol: "", label: L("a", "to"), kind: .entry))
             guard a != 0 else { return fail() }
             let diff = b - a
-            append(TapeLine(value: diff, symbol: "Δ", label: "differenza", kind: .entry))
+            append(TapeLine(value: diff, symbol: "Δ", label: L("differenza", "difference"), kind: .entry))
             let pct = CalcEngine.round(diff / abs(a) * 100, scale: decimals < 0 ? 4 : max(decimals, 2))
-            return finish(pct, symbol: "%", label: "variazione")
+            return finish(pct, symbol: "%", label: L("variazione", "change"))
         }
     }
 
@@ -304,7 +311,7 @@ struct CalcEngine: Codable {
         // Senza operazione in sospeso: percentuale sul totale parziale (es. 1000 + 22 % → 220)
         guard let v = takeEntry() else { return }
         if count > 0 {
-            append(TapeLine(value: v, symbol: "%", label: "su \(CalcEngine.format(acc, decimals: decimals))", kind: .entry))
+            append(TapeLine(value: v, symbol: "%", label: L("su ", "of ") + CalcEngine.format(acc, decimals: decimals), kind: .entry))
             finish(round(acc * v / 100), symbol: "=")
         } else {
             append(TapeLine(value: v, symbol: "%", kind: .entry))
@@ -322,7 +329,7 @@ struct CalcEngine: Codable {
 
     @discardableResult
     private mutating func fail() -> Decimal? {
-        append(TapeLine(value: nil, symbol: "E", label: "errore", kind: .error))
+        append(TapeLine(value: nil, symbol: "E", label: L("errore", "error"), kind: .error))
         pendingOp = nil
         entry = ""
         display = 0
@@ -397,7 +404,7 @@ struct CalcEngine: Codable {
         } else {
             while frac.hasSuffix("0") { frac.removeLast() }
         }
-        let out = group(intPart) + (frac.isEmpty ? "" : "," + frac)
+        let out = group(intPart) + (frac.isEmpty ? "" : decimalSep + frac)
         let isZero = r == 0
         if negative && !isZero { return "-" + out }
         if signed && !isZero { return "+" + out }
@@ -413,7 +420,7 @@ struct CalcEngine: Codable {
         let parts = s.split(separator: ".", omittingEmptySubsequences: false)
         let intPart = parts.first.map(String.init) ?? "0"
         var out = group(intPart.isEmpty ? "0" : intPart)
-        if parts.count > 1 { out += "," + parts[1] }
+        if parts.count > 1 { out += decimalSep + parts[1] }
         return sign + out
     }
 
@@ -421,7 +428,7 @@ struct CalcEngine: Codable {
         var chars = Array(digits)
         var out = ""
         while chars.count > 3 {
-            out = "." + String(chars.suffix(3)) + out
+            out = groupSep + String(chars.suffix(3)) + out
             chars.removeLast(3)
         }
         return String(chars) + out
@@ -432,7 +439,7 @@ struct CalcEngine: Codable {
     }
 
     static func isSigned(_ line: TapeLine) -> Bool {
-        line.label == "differenza" || line.label == "variazione"
+        ["differenza", "variazione", "difference", "change"].contains(line.label)
     }
 
     static func formatLine(_ line: TapeLine, decimals: Int) -> String {

@@ -10,6 +10,9 @@ struct CalcolettiApp: App {
     @StateObject private var model: CalcModel
 
     init() {
+        if let i = CommandLine.arguments.firstIndex(of: "--lang"), i + 1 < CommandLine.arguments.count {
+            CalcEngine.english = CommandLine.arguments[i + 1] == "en"
+        }
         if CommandLine.arguments.contains("--demo") { SelfTest.demo() }
         if CommandLine.arguments.contains("--selftest") { SelfTest.run() }   // collaudo automatico, poi esce
         _model = StateObject(wrappedValue: CalcModel())
@@ -73,9 +76,9 @@ enum ThemeMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .auto: return "Automatico (giorno/sera)"
-        case .light: return "Sempre chiaro"
-        case .dark: return "Sempre scuro"
+        case .auto: return L("Automatico (giorno/sera)", "Automatic (day/night)")
+        case .light: return L("Sempre chiaro", "Always light")
+        case .dark: return L("Sempre scuro", "Always dark")
         }
     }
 }
@@ -316,7 +319,7 @@ final class CalcModel: ObservableObject {
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(CalcEngine.text(for: lines, decimals: engine.decimals), forType: .string)
-        flash("Copiato negli appunti")
+        flash(L("Copiato negli appunti", "Copied to clipboard"))
     }
 
     func pasteNumber() {
@@ -331,7 +334,7 @@ final class CalcModel: ObservableObject {
             s = s.replacingOccurrences(of: ".", with: "")
         }
         guard let v = Decimal(string: s, locale: Locale(identifier: "en_US_POSIX")) else {
-            flash("Negli appunti non c'è un numero")
+            flash(L("Negli appunti non c'è un numero", "No number on the clipboard"))
             return
         }
         engine.recall(v)
@@ -339,7 +342,7 @@ final class CalcModel: ObservableObject {
     }
 
     func tearTape() { engine.clearTape() }
-    func resetGT() { engine.resetGT(); flash("GT azzerato") }
+    func resetGT() { engine.resetGT(); flash(L("GT azzerato", "GT cleared")) }
     func delete(_ r: Receipt) { engine.history.removeAll { $0.id == r.id } }
     func clearHistory() { engine.history.removeAll() }
 
@@ -360,7 +363,7 @@ final class CalcModel: ObservableObject {
         do {
             if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
         } catch {
-            flash("Impostazione non riuscita")
+            flash(L("Impostazione non riuscita", "Setting failed"))
         }
         objectWillChange.send()
     }
@@ -378,12 +381,12 @@ final class CalcModel: ObservableObject {
         return groups
     }
 
-    static let dayFormatter: DateFormatter = {
+    static var dayFormatter: DateFormatter {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "it_IT")
-        f.dateFormat = "EEEE d MMMM yyyy"
+        f.locale = Locale(identifier: CalcEngine.english ? "en_US" : "it_IT")
+        f.dateFormat = CalcEngine.english ? "EEEE, MMMM d, yyyy" : "EEEE d MMMM yyyy"
         return f
-    }()
+    }
 
     static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -394,8 +397,8 @@ final class CalcModel: ObservableObject {
 
     static func dayTitle(_ d: Date) -> String {
         let cal = Calendar.current
-        if cal.isDateInToday(d) { return "Oggi" }
-        if cal.isDateInYesterday(d) { return "Ieri" }
+        if cal.isDateInToday(d) { return L("Oggi", "Today") }
+        if cal.isDateInYesterday(d) { return L("Ieri", "Yesterday") }
         let s = dayFormatter.string(from: d)
         return s.prefix(1).uppercased() + s.dropFirst()
     }
@@ -456,7 +459,7 @@ struct HeaderView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(p.inkSoft)
             } else {
-                Text(model.showHistory ? "Cronologia" : "Calcoletti")
+                Text(model.showHistory ? L("Cronologia", "History") : "Calcoletti")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(p.ink)
                     .lineLimit(1)
@@ -464,11 +467,11 @@ struct HeaderView: View {
             }
             Spacer()
             HeaderButton(symbol: model.showHistory ? "xmark" : "clock.arrow.circlepath",
-                         help: model.showHistory ? "Torna alla calcolatrice (Esc)" : "Cronologia dei conti (H)",
+                         help: model.showHistory ? L("Torna alla calcolatrice (Esc)", "Back to calculator (Esc)") : L("Cronologia dei conti (H)", "History (H)"),
                          p: p) { model.showHistory.toggle() }
             if !model.showHistory {
-                HeaderButton(symbol: "doc.on.doc", help: "Copia lo scontrino (⌘C)", p: p) { model.copyCurrent() }
-                HeaderButton(symbol: "scissors", help: "Strappa la carta (i conti restano in cronologia)", p: p) { model.tearTape() }
+                HeaderButton(symbol: "doc.on.doc", help: L("Copia lo scontrino (⌘C)", "Copy the tape (⌘C)"), p: p) { model.copyCurrent() }
+                HeaderButton(symbol: "scissors", help: L("Strappa la carta (i conti restano in cronologia)", "Tear off the paper (history is kept)"), p: p) { model.tearTape() }
             }
             SettingsMenu(p: p)
         }
@@ -511,41 +514,41 @@ struct SettingsMenu: View {
 
     private var menu: some View {
         Menu {
-            Picker("Decimali", selection: $model.decimals) {
-                Text("F – virgola mobile").tag(-1)
+            Picker(L("Decimali", "Decimals"), selection: $model.decimals) {
+                Text(L("F – virgola mobile", "F – floating")).tag(-1)
                 Text("0").tag(0)
                 Text("2").tag(2)
                 Text("3").tag(3)
                 Text("4").tag(4)
             }
-            Picker("Tema", selection: $model.themeMode) {
+            Picker(L("Tema", "Theme"), selection: $model.themeMode) {
                 ForEach(ThemeMode.allCases) { m in Text(m.title).tag(m) }
             }
-            Picker("Sera dalle ore", selection: $model.nightHour) {
+            Picker(L("Sera dalle ore", "Night from"), selection: $model.nightHour) {
                 ForEach(15..<24, id: \.self) { h in Text("\(h):00").tag(h) }
             }
-            Picker("Giorno dalle ore", selection: $model.dayHour) {
+            Picker(L("Giorno dalle ore", "Day from"), selection: $model.dayHour) {
                 ForEach(4..<12, id: \.self) { h in Text("\(h):00").tag(h) }
             }
             Divider()
-            Menu("Scorciatoie da tastiera") {
-                Text("Invio  →  =  oppure totale")
-                Text("+  −  →  somma / sottrai")
-                Text("*  x  →  moltiplica      /  →  dividi")
-                Text("S  →  subtotale ◇      T  →  totale *")
-                Text("D  →  delta %      G  →  gran totale")
-                Text("N  →  cambia segno      %  →  percentuale")
-                Text("Esc  →  C/CE      ⌫  →  cancella cifra")
-                Text("H  →  cronologia      ⌘C / ⌘V  →  copia / incolla")
+            Menu(L("Scorciatoie da tastiera", "Keyboard shortcuts")) {
+                Text(L("Invio  →  =  oppure totale", "Return  →  =  or total"))
+                Text(L("+  −  →  somma / sottrai", "+  −  →  add / subtract"))
+                Text(L("*  x  →  moltiplica      /  →  dividi", "*  x  →  multiply      /  →  divide"))
+                Text(L("S  →  subtotale ◇      T  →  totale *", "S  →  subtotal ◇      T  →  total *"))
+                Text(L("D  →  delta %      G  →  gran totale", "D  →  delta %      G  →  grand total"))
+                Text(L("N  →  cambia segno      %  →  percentuale", "N  →  change sign      %  →  percent"))
+                Text(L("Esc  →  C/CE      ⌫  →  cancella cifra", "Esc  →  C/CE      ⌫  →  delete digit"))
+                Text(L("H  →  cronologia      ⌘C / ⌘V  →  copia / incolla", "H  →  history      ⌘C / ⌘V  →  copy / paste"))
             }
             Divider()
-            Toggle("Apri all'avvio del Mac", isOn: Binding(
+            Toggle(L("Apri all'avvio del Mac", "Open at login"), isOn: Binding(
                 get: { model.launchAtLogin },
                 set: { model.setLaunchAtLogin($0) }
             ))
-            Button("Azzera gran totale (GT)") { model.resetGT() }
+            Button(L("Azzera gran totale (GT)", "Clear grand total (GT)")) { model.resetGT() }
             Divider()
-            Button("Esci da Calcoletti") { NSApp.terminate(nil) }
+            Button(L("Esci da Calcoletti", "Quit Calcoletti")) { NSApp.terminate(nil) }
         } label: {
             Image(systemName: "gearshape")
                 .font(.system(size: 13))
@@ -554,7 +557,7 @@ struct SettingsMenu: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Impostazioni")
+        .help(L("Impostazioni", "Settings"))
     }
 }
 
@@ -594,7 +597,7 @@ struct TapeView: View {
                     VStack(spacing: 0) {
                         Spacer(minLength: 0)
                         if model.engine.tape.isEmpty {
-                            Text("Carta pronta")
+                            Text(L("Carta pronta", "Paper ready"))
                                 .font(.system(size: 12, design: .monospaced))
                                 .foregroundStyle(p.inkSoft)
                                 .frame(maxWidth: .infinity)
@@ -735,12 +738,12 @@ struct DisplayView: View {
                 }
                 if e.count > 0 {
                     Text("Σ " + CalcEngine.format(e.acc, decimals: e.decimals))
-                    Text("n. \(e.count)")
+                    Text(L("n. ", "no. ") + "\(e.count)")
                 }
                 Spacer()
                 if e.gt != 0 {
                     Text("GT " + CalcEngine.format(e.gt, decimals: e.decimals))
-                        .help("Gran totale accumulato (premi GT due volte per azzerarlo)")
+                        .help(L("Gran totale accumulato (premi GT due volte per azzerarlo)", "Grand total (press GT twice to clear)"))
                 }
                 Text(verbatim: e.decimals < 0 ? "F" : "\(e.decimals) dec")
             }
@@ -778,33 +781,33 @@ struct KeypadView: View {
     @EnvironmentObject var model: CalcModel
     let p: Palette
 
-    static let rows: [[KeyDef]] = [
-        [KeyDef(key: .clear, label: "C/CE", role: .clear, help: "Cancella numero / annulla conto (Esc)"),
-         KeyDef(key: .backspace, label: "⌫", role: .fn, help: "Cancella ultima cifra"),
-         KeyDef(key: .sign, label: "±", role: .fn, help: "Cambia segno (N)"),
-         KeyDef(key: .delta, label: "Δ%", role: .fn, help: "Variazione %: valore iniziale Δ valore finale = (D)"),
-         KeyDef(key: .grandTotal, label: "GT", role: .fn, help: "Gran totale (G) – due volte per azzerare")],
+    static var rows: [[KeyDef]] { [
+        [KeyDef(key: .clear, label: "C/CE", role: .clear, help: L("Cancella numero / annulla conto (Esc)", "Clear entry / void (Esc)")),
+         KeyDef(key: .backspace, label: "⌫", role: .fn, help: L("Cancella ultima cifra", "Delete last digit")),
+         KeyDef(key: .sign, label: "±", role: .fn, help: L("Cambia segno (N)", "Change sign (N)")),
+         KeyDef(key: .delta, label: "Δ%", role: .fn, help: L("Variazione %: valore iniziale Δ valore finale = (D)", "% change: start Δ end = (D)")),
+         KeyDef(key: .grandTotal, label: "GT", role: .fn, help: L("Gran totale (G) – due volte per azzerare", "Grand total (G) – twice to clear"))],
         [KeyDef(key: .digit(7), label: "7", role: .digit, help: ""),
          KeyDef(key: .digit(8), label: "8", role: .digit, help: ""),
          KeyDef(key: .digit(9), label: "9", role: .digit, help: ""),
-         KeyDef(key: .div, label: "÷", role: .op, help: "Dividi (/)"),
-         KeyDef(key: .percent, label: "%", role: .fn, help: "Percentuale: 1000 + 22 % → 220, poi + per sommarlo")],
+         KeyDef(key: .div, label: "÷", role: .op, help: L("Dividi (/)", "Divide (/)")),
+         KeyDef(key: .percent, label: "%", role: .fn, help: L("Percentuale: 1000 + 22 % → 220, poi + per sommarlo", "Percent: 1000 + 22 % → 220, then + to add it"))],
         [KeyDef(key: .digit(4), label: "4", role: .digit, help: ""),
          KeyDef(key: .digit(5), label: "5", role: .digit, help: ""),
          KeyDef(key: .digit(6), label: "6", role: .digit, help: ""),
-         KeyDef(key: .mul, label: "×", role: .op, help: "Moltiplica (* o X)"),
-         KeyDef(key: .subtotal, label: "◇", role: .fn, help: "Subtotale (S)")],
+         KeyDef(key: .mul, label: "×", role: .op, help: L("Moltiplica (* o X)", "Multiply (* or X)")),
+         KeyDef(key: .subtotal, label: "◇", role: .fn, help: L("Subtotale (S)", "Subtotal (S)"))],
         [KeyDef(key: .digit(1), label: "1", role: .digit, help: ""),
          KeyDef(key: .digit(2), label: "2", role: .digit, help: ""),
          KeyDef(key: .digit(3), label: "3", role: .digit, help: ""),
-         KeyDef(key: .sub, label: "−", role: .op, help: "Sottrai (−)"),
-         KeyDef(key: .equals, label: "=", role: .op, help: "Risultato di × ÷ Δ, altrimenti totale (Invio)")],
+         KeyDef(key: .sub, label: "−", role: .op, help: L("Sottrai (−)", "Subtract (−)")),
+         KeyDef(key: .equals, label: "=", role: .op, help: L("Risultato di × ÷ Δ, altrimenti totale (Invio)", "Result of × ÷ Δ, otherwise total (Return)"))],
         [KeyDef(key: .digit(0), label: "0", role: .digit, help: ""),
          KeyDef(key: .doubleZero, label: "00", role: .digit, help: ""),
-         KeyDef(key: .decimal, label: ",", role: .digit, help: "Virgola (, o .)"),
-         KeyDef(key: .add, label: "+", role: .op, help: "Somma (+)"),
-         KeyDef(key: .total, label: "*", role: .op, help: "Totale: chiude lo scontrino e lo salva in cronologia (T)")]
-    ]
+         KeyDef(key: .decimal, label: CalcEngine.decimalSep, role: .digit, help: L("Virgola (, o .)", "Decimal point (. or ,)")),
+         KeyDef(key: .add, label: "+", role: .op, help: L("Somma (+)", "Add (+)")),
+         KeyDef(key: .total, label: "*", role: .op, help: L("Totale: chiude lo scontrino e lo salva in cronologia (T)", "Total: closes the tape and saves it to history (T)"))]
+    ] }
 
     var body: some View {
         VStack(spacing: 7) {
@@ -880,7 +883,7 @@ struct HistoryView: View {
                 Image(systemName: "scroll")
                     .font(.system(size: 28, weight: .light))
                     .foregroundStyle(p.inkSoft)
-                Text("Nessun conto ancora.\nOgni totale (*) finisce qui.")
+                Text(L("Nessun conto ancora.\nOgni totale (*) finisce qui.", "No sums yet.\nEvery total (*) lands here."))
                     .multilineTextAlignment(.center)
                     .font(.system(size: 12))
                     .foregroundStyle(p.inkSoft)
@@ -916,16 +919,16 @@ struct HistoryView: View {
 
     private var footer: some View {
                 HStack {
-                    Text("\(model.engine.history.count) conti salvati")
+                    Text("\(model.engine.history.count) " + L("conti salvati", "saved"))
                         .font(.system(size: 11))
                         .foregroundStyle(p.inkSoft)
                     Spacer()
                     if model.confirmClear {
-                        Button("Annulla") { model.confirmClear = false }
+                        Button(L("Annulla", "Cancel")) { model.confirmClear = false }
                             .buttonStyle(.plain)
                             .font(.system(size: 11))
                             .foregroundStyle(p.inkSoft)
-                        Button("Conferma: svuota tutto") {
+                        Button(L("Conferma: svuota tutto", "Confirm: clear all")) {
                             model.clearHistory()
                             model.confirmClear = false
                         }
@@ -933,7 +936,7 @@ struct HistoryView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(p.red)
                     } else {
-                        Button("Svuota cronologia") { model.confirmClear = true }
+                        Button(L("Svuota cronologia", "Clear history")) { model.confirmClear = true }
                             .buttonStyle(.plain)
                             .font(.system(size: 11))
                             .foregroundStyle(p.inkSoft)
@@ -972,7 +975,7 @@ struct ReceiptCard: View {
                         .foregroundStyle(p.inkSoft)
                         .lineLimit(1)
                     Spacer()
-                    Text(receipt.total.map { CalcEngine.format($0, decimals: model.engine.decimals) } ?? "annullato")
+                    Text(receipt.total.map { CalcEngine.format($0, decimals: model.engine.decimals) } ?? L("annullato", "void"))
                         .font(.system(size: 14, weight: .bold, design: .monospaced))
                         .foregroundStyle(totalColor)
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
@@ -992,12 +995,12 @@ struct ReceiptCard: View {
                 }
                 .padding(.top, 2)
                 HStack(spacing: 16) {
-                    smallButton("Copia", "doc.on.doc") { model.copy(receipt.lines) }
+                    smallButton(L("Copia", "Copy"), "doc.on.doc") { model.copy(receipt.lines) }
                     if receipt.total != nil {
-                        smallButton("Usa il totale", "arrow.uturn.left") { model.useTotal(receipt) }
+                        smallButton(L("Usa il totale", "Use total"), "arrow.uturn.left") { model.useTotal(receipt) }
                     }
                     Spacer()
-                    smallButton("Elimina", "trash", color: p.red) { model.delete(receipt) }
+                    smallButton(L("Elimina", "Delete"), "trash", color: p.red) { model.delete(receipt) }
                 }
                 .padding(.top, 2)
             }
@@ -1009,7 +1012,7 @@ struct ReceiptCard: View {
 
     private var summary: String {
         let n = receipt.lines.filter { $0.kind == .entry }.count
-        return n == 1 ? "1 voce" : "\(n) voci"
+        return n == 1 ? L("1 voce", "1 item") : "\(n) " + L("voci", "items")
     }
 
     private var totalColor: Color {
