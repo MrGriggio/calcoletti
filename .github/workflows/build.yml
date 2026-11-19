@@ -53,7 +53,7 @@ jobs:
 
   schermate:
     # Apple Silicon: ha la GPU virtuale necessaria per disegnare le schermate. Non blocca la release.
-    runs-on: macos-15
+    runs-on: macos-14
     timeout-minutes: 30
     continue-on-error: true
     steps:
