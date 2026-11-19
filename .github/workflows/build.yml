@@ -1,0 +1,17 @@
+# Se il progetto viene messo su GitHub, ogni modifica crea in automatico Calcoletti.dmg
+# (scaricabile dalla scheda "Actions"), senza bisogno di compilare sul proprio Mac.
+name: Build Calcoletti
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compila app e dmg
+        run: bash build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Calcoletti
+          path: build/Calcoletti.dmg

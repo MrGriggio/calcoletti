@@ -1,0 +1,40 @@
+CALCOLETTI – calcolatrice a scontrino per la barra dei menu del Mac
+===================================================================
+
+INSTALLAZIONE SUL TUO MAC (una volta sola)
+1. Scompatta lo zip nella cartella Download.
+2. Apri il Terminale e scrivi:
+       cd ~/Downloads/Calcoletti && bash installa.sh
+3. Se il Mac chiede di installare gli "Strumenti da riga di comando",
+   conferma, aspetta che finiscano e rilancia lo stesso comando.
+Risultato: Calcoletti in Applicazioni (icona a farfalla nella barra in alto)
+e Calcoletti.dmg sulla Scrivania.
+
+INSTALLARLA SU ALTRI MAC (senza Terminale)
+Copia Calcoletti.dmg sull'altro Mac, aprilo e trascina Calcoletti in Applicazioni.
+La prima volta macOS dirà che lo sviluppatore non è verificato:
+Impostazioni di Sistema → Privacy e sicurezza → "Apri comunque". Poi non lo chiede più.
+Serve macOS 13 Ventura o successivo; funziona su Mac Apple Silicon e Intel.
+
+COME SI USA (logica Olivetti / calcolatrice scrivente)
+  Somme       12,50 +  7,25 +  3 −  →  ◇ subtotale,  * totale
+  Il totale (*) chiude lo scontrino e lo salva in cronologia.
+  ×  ÷        12 × 3 =   → 36   (poi + per sommarlo al conto)
+  IVA         1000 +  22 %  → 220,  poi +  e  *  → 1.220
+  Scorporo    55 ÷ 250 %    → 22 %
+  Delta %     valore iniziale  Δ%  valore finale  =
+              100 Δ% 112 =   → differenza +12, variazione +12,00 %
+  GT          gran totale di tutti i totali; premuto due volte si azzera
+  C/CE        prima pressione cancella il numero, seconda annulla il conto
+  Un clic su un numero dello scontrino lo rimette nel display.
+
+TASTIERA DEL MAC
+  Invio = / totale     +  −  somma/sottrai     *  x  moltiplica     /  dividi
+  S subtotale   T totale   D delta%   G gran totale   N cambia segno
+  Esc C/CE   ⌫ cancella cifra   H cronologia   ⌘C copia scontrino   ⌘V incolla numero
+
+IMPOSTAZIONI (ingranaggio)
+  Decimali F / 0 / 2 / 3 / 4 – Tema automatico (chiaro di giorno, scuro di sera)
+  con orari regolabili – Avvio automatico – Azzera GT – Esci
+
+I dati restano sul Mac in ~/Library/Application Support/Calcoletti/scontrino.json
