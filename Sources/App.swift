@@ -28,7 +28,7 @@ enum MenuIcon {
             NSColor.black.setFill()
             NSColor.black.setStroke()
             // ala sinistra e destra con il bordo esterno "dentellato" come le farfalle vere
-            for side in [-1.0, 1.0] {
+            for side: CGFloat in [-1, 1] {
                 let cx: CGFloat = 10
                 let p = NSBezierPath()
                 p.move(to: NSPoint(x: cx + side * 1.5, y: 9.2))
@@ -38,9 +38,10 @@ enum MenuIcon {
                 // bordo dentellato verticale
                 let teeth = 5
                 for i in 0..<teeth {
-                    let y0 = 14.5 - 13.0 * CGFloat(i) / CGFloat(teeth)
-                    let y1 = 14.5 - 13.0 * CGFloat(i + 1) / CGFloat(teeth)
-                    p.line(to: NSPoint(x: cx + side * 9.6, y: (y0 + y1) / 2))
+                    let y0: CGFloat = 14.5 - 13.0 * CGFloat(i) / CGFloat(teeth)
+                    let y1: CGFloat = 14.5 - 13.0 * CGFloat(i + 1) / CGFloat(teeth)
+                    let ym: CGFloat = (y0 + y1) / 2
+                    p.line(to: NSPoint(x: cx + side * 9.6, y: ym))
                     p.line(to: NSPoint(x: cx + side * 8.5, y: y1))
                 }
                 p.curve(to: NSPoint(x: cx + side * 1.5, y: 6.8),
