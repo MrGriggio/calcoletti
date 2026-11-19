@@ -45,10 +45,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Info.plist)
+          cat > notes.md <<'NOTES'
+          **Download `Calcoletti.dmg` below**, open it and drag **Calcoletti** into **Applications**.
+
+          **First launch:** the app isn't signed with an Apple Developer ID, so macOS blocks it the first time. Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**. Or run in Terminal:
+          ```
+          xattr -dr com.apple.quarantine /Applications/Calcoletti.app
+          ```
+          Requires macOS 13 Ventura or later · Apple Silicon & Intel · English and Italian.
+
+          ---
+
+          🇮🇹 **Scarica `Calcoletti.dmg` qui sotto**, aprilo e trascina **Calcoletti** in **Applicazioni**.
+
+          **Primo avvio:** l'app non è firmata con un account sviluppatore Apple, quindi la prima volta macOS la blocca. Apri **Impostazioni di Sistema → Privacy e sicurezza**, scorri in basso e premi **Apri comunque**.
+          NOTES
+          sed -i '' 's/^          //' notes.md
           gh release delete latest --yes --cleanup-tag 2>/dev/null || true
           gh release create latest build/Calcoletti.dmg \
             --title "Calcoletti ${VERSION}" \
-            --notes "Scarica Calcoletti.dmg, aprilo e trascina Calcoletti in Applicazioni. Al primo avvio: Impostazioni di Sistema → Privacy e sicurezza → Apri comunque." \
+            --notes-file notes.md \
             --target "$GITHUB_SHA"
 
   schermate:
