@@ -10,6 +10,7 @@ struct CalcolettiApp: App {
     @StateObject private var model: CalcModel
 
     init() {
+        if CommandLine.arguments.contains("--demo") { SelfTest.demo() }
         if CommandLine.arguments.contains("--selftest") { SelfTest.run() }   // collaudo automatico, poi esce
         _model = StateObject(wrappedValue: CalcModel())
     }

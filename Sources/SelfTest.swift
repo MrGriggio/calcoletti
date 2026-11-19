@@ -143,4 +143,59 @@ enum SelfTest {
         print(report.joined(separator: "\n"))
         exit(failures == 0 ? 0 : 1)
     }
+
+    /// Fotogrammi per il video: `Calcoletti --demo <cartella>` salva una schermata dopo ogni tasto.
+    static func demo() -> Never {
+        let args = CommandLine.arguments.filter { !$0.hasPrefix("--") }
+        let out = URL(fileURLWithPath: args.count > 1 ? args.last! : FileManager.default.currentDirectoryPath)
+        try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        _ = NSApplication.shared
+        CalcModel.isSnapshot = true
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("calcoletti-demo-\(UUID().uuidString)")
+        let model = CalcModel(storageDir: tmp, testing: true)
+        model.decimals = 2
+        model.themeMode = .light
+        var manifest: [String] = []
+        var n = 0
+
+        func render(_ name: String) {
+            let r = ImageRenderer(content: RootView().environmentObject(model))
+            r.scale = 3
+            if let cg = r.cgImage,
+               let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) {
+                try? png.write(to: out.appendingPathComponent(name))
+            }
+        }
+        func frame(_ label: String) {
+            let name = String(format: "k%03d.png", n)
+            render(name)
+            manifest.append("\(name)\t\(label)")
+            n += 1
+        }
+        func press(_ ch: Character) {
+            let chars = ch == "⏎" ? "\r" : String(ch)
+            let code: UInt16 = ch == "⏎" ? 36 : 0
+            if let e = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                                        windowNumber: 0, context: nil, characters: chars,
+                                        charactersIgnoringModifiers: chars, isARepeat: false, keyCode: code) {
+                _ = model.handle(e)
+            }
+        }
+        frame("start")
+        for scene in ["12,50+7,25+3-s100+t", "1000+22%+t", "100d112⏎"] {
+            manifest.append("# scena")
+            for ch in scene { press(ch); frame(String(ch)) }
+        }
+        model.flashKey = nil
+        render("giorno.png")
+        model.themeMode = .dark
+        render("sera.png")
+        model.showHistory = true
+        if let last = model.engine.history.last { model.expandedReceipts.insert(last.id) }
+        render("cronologia-sera.png")
+        model.themeMode = .light
+        render("cronologia-giorno.png")
+        try? manifest.joined(separator: "\n").write(to: out.appendingPathComponent("manifest.txt"), atomically: true, encoding: .utf8)
+        exit(0)
+    }
 }

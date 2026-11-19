@@ -64,6 +64,7 @@ jobs:
           mkdir -p shot
           xcrun swiftc -O -swift-version 5 -parse-as-library -target arm64-apple-macos13.0 Sources/*.swift -o shot/Calcoletti
           shot/Calcoletti --selftest "$PWD/selftest" 2>&1 | tail -40
+          shot/Calcoletti --demo "$PWD/selftest/demo" 2>&1 | tail -5
       - name: Salva le schermate nel ramo selftest
         if: always()
         shell: bash
