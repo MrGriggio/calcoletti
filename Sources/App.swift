@@ -572,6 +572,7 @@ struct TapeView: View {
                         TapeRow(line: line, decimals: model.engine.decimals, p: p)
                     }
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 Color.clear.frame(height: 6)
             }
             .padding(.horizontal, 14)
