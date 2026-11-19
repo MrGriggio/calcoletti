@@ -1,20 +1,17 @@
 CALCOLETTI – calcolatrice a scontrino per la barra dei menu del Mac
 ===================================================================
 
-INSTALLAZIONE SUL TUO MAC (una volta sola)
-1. Scompatta lo zip nella cartella Download.
-2. Apri il Terminale e scrivi:
-       cd ~/Downloads/Calcoletti && bash installa.sh
-3. Se il Mac chiede di installare gli "Strumenti da riga di comando",
-   conferma, aspetta che finiscano e rilancia lo stesso comando.
-Risultato: Calcoletti in Applicazioni (icona a farfalla nella barra in alto)
-e Calcoletti.dmg sulla Scrivania.
-
-INSTALLARLA SU ALTRI MAC (senza Terminale)
-Copia Calcoletti.dmg sull'altro Mac, aprilo e trascina Calcoletti in Applicazioni.
-La prima volta macOS dirà che lo sviluppatore non è verificato:
-Impostazioni di Sistema → Privacy e sicurezza → "Apri comunque". Poi non lo chiede più.
+INSTALLAZIONE
+1. Scarica Calcoletti.dmg da https://github.com/MrGriggio/calcoletti/releases/latest
+2. Aprilo e trascina Calcoletti in Applicazioni.
+3. Al primo avvio macOS dice che lo sviluppatore non è verificato:
+   Impostazioni di Sistema → Privacy e sicurezza → "Apri comunque". Poi non lo chiede più.
 Serve macOS 13 Ventura o successivo; funziona su Mac Apple Silicon e Intel.
+
+COMPILARLA DA SOLI (facoltativo)
+Su un Mac con gli "Strumenti da riga di comando" di Xcode (xcode-select --install):
+       bash build.sh      → build/Calcoletti.app e build/Calcoletti.dmg
+       bash installa.sh   → compila, installa in Applicazioni e la apre
 
 COME SI USA (logica Olivetti / calcolatrice scrivente)
   Somme       12,50 +  7,25 +  3 −  →  ◇ subtotale,  * totale
