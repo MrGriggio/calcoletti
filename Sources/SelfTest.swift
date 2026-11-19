@@ -7,8 +7,8 @@ import Metal
 @MainActor
 enum SelfTest {
     static func run() -> Never {
-        let args = CommandLine.arguments
-        let out = URL(fileURLWithPath: args.last.flatMap { $0.hasPrefix("--") ? nil : $0 } ?? FileManager.default.currentDirectoryPath)
+        let args = CommandLine.arguments.filter { !$0.hasPrefix("--") }
+        let out = URL(fileURLWithPath: args.count > 1 ? args.last! : FileManager.default.currentDirectoryPath)
         try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
         _ = NSApplication.shared
         CalcModel.isSnapshot = true
@@ -93,6 +93,8 @@ enum SelfTest {
             try? r.joined(separator: "\n").write(to: out.appendingPathComponent("report.md"), atomically: true, encoding: .utf8)
         }
         writeReport()
+
+        if CommandLine.arguments.contains("--no-shots") { exit(failures == 0 ? 0 : 1) }
 
         report.append("")
         report.append("## Schermate")

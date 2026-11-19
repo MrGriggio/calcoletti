@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          build/Calcoletti.app/Contents/MacOS/Calcoletti --selftest "$PWD/selftest" 2>&1 | tee selftest.log
+          build/Calcoletti.app/Contents/MacOS/Calcoletti --selftest --no-shots "$PWD/selftest" 2>&1 | tee selftest.log
       - name: Riepilogo
         if: always()
         shell: bash
@@ -38,17 +38,6 @@ jobs:
             tail -40 build.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-      - name: Salva le schermate del collaudo (ramo selftest)
-        if: always()
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          [ -n "$(ls -A selftest 2>/dev/null)" ] || exit 0
-          cd selftest
-          git init -q && git checkout -q -b selftest && git add .
-          git -c user.name="Calcoletti CI" -c user.email="ci@users.noreply.github.com" commit -qm "Collaudo di $GITHUB_SHA"
-          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" selftest
       - name: Pubblica Calcoletti.dmg nella pagina Releases
         if: success() && github.ref == 'refs/heads/main'
         shell: bash
@@ -61,3 +50,29 @@ jobs:
             --title "Calcoletti ${VERSION}" \
             --notes "Scarica Calcoletti.dmg, aprilo e trascina Calcoletti in Applicazioni. Al primo avvio: Impostazioni di Sistema → Privacy e sicurezza → Apri comunque." \
             --target "$GITHUB_SHA"
+
+  schermate:
+    # Apple Silicon: ha la GPU virtuale necessaria per disegnare le schermate. Non blocca la release.
+    runs-on: macos-15
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compila (solo arm64) e scatta le schermate
+        shell: bash
+        run: |
+          mkdir -p shot
+          xcrun swiftc -O -swift-version 5 -parse-as-library -target arm64-apple-macos13.0 Sources/*.swift -o shot/Calcoletti
+          shot/Calcoletti --selftest "$PWD/selftest" 2>&1 | tail -40
+      - name: Salva le schermate nel ramo selftest
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -n "$(ls -A selftest 2>/dev/null)" ] || exit 0
+          cat selftest/report.md >> "$GITHUB_STEP_SUMMARY"
+          cd selftest
+          git init -q && git checkout -q -b selftest && git add .
+          git -c user.name="Calcoletti CI" -c user.email="ci@users.noreply.github.com" commit -qm "Collaudo di $GITHUB_SHA"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" selftest
