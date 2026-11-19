@@ -239,6 +239,7 @@ final class CalcModel: ObservableObject {
             case "c": copyCurrent(); return true
             case "v": pasteNumber(); return true
             case "y": showHistory.toggle(); return true
+            case "p": exportAllPDF(); return true
             case "q": NSApp.terminate(nil); return true
             default: return false
             }
@@ -345,6 +346,41 @@ final class CalcModel: ObservableObject {
     func resetGT() { engine.resetGT(); flash(L("GT azzerato", "GT cleared")) }
     func delete(_ r: Receipt) { engine.history.removeAll { $0.id == r.id } }
     func clearHistory() { engine.history.removeAll() }
+
+    /// Esporta i conti in PDF nella cartella Download e lo apre in Anteprima.
+    func exportPDF(_ receipts: [Receipt], fileName: String) {
+        let data = PDFExport.data(for: receipts, decimals: engine.decimals)
+        let fm = FileManager.default
+        let dir = fm.urls(for: .downloadsDirectory, in: .userDomainMask).first ?? fm.temporaryDirectory
+        var url = dir.appendingPathComponent(fileName + ".pdf")
+        var n = 2
+        while fm.fileExists(atPath: url.path) {
+            url = dir.appendingPathComponent("\(fileName) (\(n)).pdf"); n += 1
+        }
+        do {
+            try data.write(to: url)
+            NSWorkspace.shared.open(url)
+            flash(L("PDF salvato in Download", "PDF saved to Downloads"))
+        } catch {
+            flash(L("PDF non salvato", "Could not save the PDF"))
+        }
+    }
+
+    func exportAllPDF() {
+        guard !engine.history.isEmpty else { flash(L("Cronologia vuota", "History is empty")); return }
+        exportPDF(engine.history, fileName: L("Calcoletti cronologia ", "Calcoletti history ") + CalcModel.fileStamp(Date()))
+    }
+
+    func exportPDF(_ r: Receipt) {
+        exportPDF([r], fileName: L("Calcoletti conto ", "Calcoletti calculation ") + CalcModel.fileStamp(r.date))
+    }
+
+    static func fileStamp(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd HH.mm"
+        return f.string(from: d)
+    }
 
     func toggleReceipt(_ id: UUID) {
         if expandedReceipts.contains(id) { expandedReceipts.remove(id) } else { expandedReceipts.insert(id) }
@@ -540,6 +576,7 @@ struct SettingsMenu: View {
                 Text(L("N  →  cambia segno      %  →  percentuale", "N  →  change sign      %  →  percent"))
                 Text(L("Esc  →  C/CE      ⌫  →  cancella cifra", "Esc  →  C/CE      ⌫  →  delete digit"))
                 Text(L("H  →  cronologia      ⌘C / ⌘V  →  copia / incolla", "H  →  history      ⌘C / ⌘V  →  copy / paste"))
+                Text(L("⌘P  →  esporta la cronologia in PDF", "⌘P  →  export history as PDF"))
             }
             Divider()
             Toggle(L("Apri all'avvio del Mac", "Open at login"), isOn: Binding(
@@ -923,6 +960,16 @@ struct HistoryView: View {
                         .font(.system(size: 11))
                         .foregroundStyle(p.inkSoft)
                     Spacer()
+                    if !model.confirmClear {
+                        Button { model.exportAllPDF() } label: {
+                            Label("PDF", systemImage: "arrow.down.doc")
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(p.ink)
+                        .help(L("Esporta tutta la cronologia in PDF (⌘P)", "Export the whole history as PDF (⌘P)"))
+                        .padding(.trailing, 10)
+                    }
                     if model.confirmClear {
                         Button(L("Annulla", "Cancel")) { model.confirmClear = false }
                             .buttonStyle(.plain)
@@ -994,8 +1041,9 @@ struct ReceiptCard: View {
                     }
                 }
                 .padding(.top, 2)
-                HStack(spacing: 16) {
+                HStack(spacing: 13) {
                     smallButton(L("Copia", "Copy"), "doc.on.doc") { model.copy(receipt.lines) }
+                    smallButton("PDF", "arrow.down.doc") { model.exportPDF(receipt) }
                     if receipt.total != nil {
                         smallButton(L("Usa il totale", "Use total"), "arrow.uturn.left") { model.useTotal(receipt) }
                     }

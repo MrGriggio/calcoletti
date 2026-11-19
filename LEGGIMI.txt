@@ -13,6 +13,10 @@ Su un Mac con gli "Strumenti da riga di comando" di Xcode (xcode-select --instal
        bash build.sh      → build/Calcoletti.app e build/Calcoletti.dmg
        bash installa.sh   → compila, installa in Applicazioni e la apre
 
+PDF
+  In cronologia: "PDF" in basso esporta tutti i conti, "PDF" su un conto aperto esporta solo quello.
+  Il file va in Download e si apre in Anteprima, pronto da stampare o inviare.
+
 COME SI USA (logica Olivetti / calcolatrice scrivente)
   Somme       12,50 +  7,25 +  3 −  →  ◇ subtotale,  * totale
   Il totale (*) chiude lo scontrino e lo salva in cronologia.
@@ -28,7 +32,7 @@ COME SI USA (logica Olivetti / calcolatrice scrivente)
 TASTIERA DEL MAC
   Invio = / totale     +  −  somma/sottrai     *  x  moltiplica     /  dividi
   S subtotale   T totale   D delta%   G gran totale   N cambia segno
-  Esc C/CE   ⌫ cancella cifra   H cronologia   ⌘C copia scontrino   ⌘V incolla numero
+  Esc C/CE   ⌫ cancella cifra   H cronologia   ⌘C copia scontrino   ⌘V incolla numero   ⌘P esporta la cronologia in PDF
 
 IMPOSTAZIONI (ingranaggio)
   Decimali F / 0 / 2 / 3 / 4 – Tema automatico (chiaro di giorno, scuro di sera)

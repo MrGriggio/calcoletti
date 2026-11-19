@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import Metal
+import PDFKit
 
 /// Collaudo automatico: `Calcoletti --selftest <cartella>`
 /// Simula la tastiera fisica, controlla i risultati, salva le schermate e scrive report.md.
@@ -82,6 +83,25 @@ enum SelfTest {
             try? JSONDecoder().decode(CalcEngine.self, from: $0)
         }
         check(saved?.history.count == model.engine.history.count, "cronologia salvata su disco (\(saved?.history.count ?? 0) conti)")
+
+        // Esportazione PDF
+        let pdfData = PDFExport.data(for: model.engine.history, decimals: 2)
+        try? pdfData.write(to: out.appendingPathComponent("cronologia.pdf"))
+        let doc = PDFDocument(data: pdfData)
+        let pdfText = doc?.string ?? ""
+        check((doc?.pageCount ?? 0) >= 1, "PDF della cronologia creato (\(doc?.pageCount ?? 0) pagine, \(pdfData.count / 1024) KB)")
+        check(pdfText.contains("116,75") && pdfText.contains("1.220,00"), "il PDF contiene i totali 116,75 e 1.220,00")
+        var many: [Receipt] = []
+        for k in 0..<40 { if let r = model.engine.history.first { var c = r; c.id = UUID(); c.date = Date().addingTimeInterval(Double(k)); many.append(c) } }
+        let bigDoc = PDFDocument(data: PDFExport.data(for: many, decimals: 2))
+        check((bigDoc?.pageCount ?? 0) > 1, "40 conti vanno su più pagine (\(bigDoc?.pageCount ?? 0) pagine)")
+        if !CommandLine.arguments.contains("--no-shots"), let page = doc?.page(at: 0) {
+            let img = page.thumbnail(of: NSSize(width: 1190, height: 1684), for: .mediaBox)
+            if let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
+               let png = rep.representation(using: .png, properties: [:]) {
+                try? png.write(to: out.appendingPathComponent("5-pdf.png"))
+            }
+        }
 
         // Uno scontrino in corso per le schermate
         type("45,90+12,10+8,50-")

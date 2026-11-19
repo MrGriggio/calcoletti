@@ -32,6 +32,7 @@
 - **Percent & VAT** – `1000 + 22 %` → 220, then `+` to reach 1,220. Also `×` / `÷` with `%`.
 - **Grand total (GT)**, `00` key, sign change, backspace, decimals F / 0 / 2 / 3 / 4.
 - **History** – every total is saved, grouped by day: reopen, copy as text, reuse the total, delete.
+- **PDF export** – export the whole history (or a single calculation) as a clean A4 PDF, ready to print or send.
 - **Light by day, dark by night** – switches automatically at the hours you choose (or always light / dark).
 - **Full keyboard control** and **English / Italian** (follows your Mac's language, including number format).
 - Opens at login. All data stays on your Mac.
@@ -47,6 +48,7 @@
 | `G` | grand total (twice to clear) | `N` | change sign |
 | `Esc` | C/CE | `⌫` | delete digit |
 | `H` | history | `⌘C` / `⌘V` | copy tape / paste number |
+| `⌘P` | export history as PDF | | |
 
 ## Install
 
@@ -75,6 +77,7 @@ No Xcode project needed: it's plain SwiftUI + AppKit compiled with `swiftc`.
 |---|---|
 | `Sources/Engine.swift` | Calculator logic (adding‑machine), tape, history, number formatting – Foundation only |
 | `Sources/App.swift` | Menu bar app, SwiftUI interface, keyboard, themes, settings |
+| `Sources/PDFExport.swift` | A4 PDF export of the history |
 | `Sources/SelfTest.swift` | Automatic test (`--selftest`) and frame capture for videos (`--demo`) |
 | `.github/workflows/build.yml` | Builds on GitHub's Macs, runs the tests and publishes the `.dmg` release |
 
@@ -97,11 +100,11 @@ Issues and pull requests are welcome. Please keep the app small, simple and offl
 
 <p align="center"><img src="docs/screenshot-it.png" width="250" alt="Calcoletti in italiano"></p>
 
-**Cosa fa:** somme e sottrazioni con subtotale `◇` e totale `*`, numero di voci, sottrazioni in rosso; tasto **Δ%** per la variazione percentuale (`100 Δ% 112 =` → +12 %); percentuale e IVA (`1000 + 22 %` → 220, poi `+` per arrivare a 1.220); gran totale GT; **cronologia** di tutti i conti divisa per giorno; tema **chiaro di giorno e scuro la sera**; tutto anche da tastiera. L'app è in italiano quando il Mac è in italiano (numeri nel formato 1.220,00).
+**Cosa fa:** somme e sottrazioni con subtotale `◇` e totale `*`, numero di voci, sottrazioni in rosso; tasto **Δ%** per la variazione percentuale (`100 Δ% 112 =` → +12 %); percentuale e IVA (`1000 + 22 %` → 220, poi `+` per arrivare a 1.220); gran totale GT; **cronologia** di tutti i conti divisa per giorno, **esportabile in PDF** (tutta o un conto alla volta); tema **chiaro di giorno e scuro la sera**; tutto anche da tastiera. L'app è in italiano quando il Mac è in italiano (numeri nel formato 1.220,00).
 
 **Installazione:** scarica **Calcoletti.dmg** dall'[ultima release](https://github.com/MrGriggio/calcoletti/releases/latest), aprilo e trascina Calcoletti in Applicazioni. Al primo avvio: **Impostazioni di Sistema → Privacy e sicurezza → Apri comunque** (l'app non è firmata con un account sviluppatore Apple).
 
-**Tastiera:** Invio = / totale · S subtotale · T totale · D delta % · G gran totale · N cambia segno · Esc C/CE · H cronologia · ⌘C copia lo scontrino · ⌘V incolla un numero.
+**Tastiera:** Invio = / totale · S subtotale · T totale · D delta % · G gran totale · N cambia segno · Esc C/CE · H cronologia · ⌘C copia lo scontrino · ⌘V incolla un numero · ⌘P esporta la cronologia in PDF.
 
 **Compilarla da soli:** `bash build.sh` su un Mac con gli strumenti da riga di comando di Xcode. Dettagli in [LEGGIMI.txt](LEGGIMI.txt).
 
